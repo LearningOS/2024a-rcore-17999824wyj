@@ -14,9 +14,11 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::config::MAX_APP_NUM;
+use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
+use crate::syscall::TaskInfo;
+use crate::timer::get_time_ms;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
@@ -54,6 +56,8 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            task_call_times: [0; MAX_SYSCALL_NUM],
+            task_start_time: get_time_ms(),
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -135,6 +139,26 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    /// Give back Current Task's Info
+    fn get_current_task_info(&self) -> TaskInfo {
+        let inner = self.inner.exclusive_access();
+        let current_idx = inner.current_task;
+        let current_task = inner.tasks[current_idx];
+        TaskInfo::new(
+            current_task.task_status,
+            current_task.task_call_times,
+            current_task.task_start_time,
+        )
+    }
+
+    /// An api for adding sys-call times for current task
+    fn add_syscall_times_for_cur_task(&self, syscall_id: usize) {
+        let inner = self.inner.exclusive_access();
+        let current_idx = inner.current_task;
+        let mut current_task = inner.tasks[current_idx];
+        current_task.task_call_times[syscall_id] += 1;
+    }
 }
 
 /// Run the first task in task list.
@@ -168,4 +192,14 @@ pub fn suspend_current_and_run_next() {
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+/// Get current task's Info
+pub fn get_current_task_info() -> TaskInfo {
+    TASK_MANAGER.get_current_task_info()
+}
+
+/// When current task has made a sys-call, need this to add its sys-call-times
+pub fn add_syscall_times_for_cur_task(syscall_id: usize) {
+    TASK_MANAGER.add_syscall_times_for_cur_task(syscall_id);
 }
