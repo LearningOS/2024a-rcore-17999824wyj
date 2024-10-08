@@ -154,9 +154,9 @@ impl TaskManager {
 
     /// An api for adding sys-call times for current task
     fn add_syscall_times_for_cur_task(&self, syscall_id: usize) {
-        let inner = self.inner.exclusive_access();
+        let mut inner = self.inner.exclusive_access();
         let current_idx = inner.current_task;
-        let mut current_task = inner.tasks[current_idx];
+        let current_task = &mut inner.tasks[current_idx];
         current_task.task_call_times[syscall_id] += 1;
     }
 }
