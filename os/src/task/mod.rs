@@ -148,7 +148,7 @@ impl TaskManager {
         TaskInfo::new(
             current_task.task_status,
             current_task.task_call_times,
-            current_task.task_start_time,
+            get_time_ms() - current_task.task_start_time,
         )
     }
 
