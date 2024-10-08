@@ -29,6 +29,8 @@ rcore 会报无效指令错误，然后内核将程序 kill，回收内存
 [kernel] Loading app_3
 ```
 
+[rustsbi] RustSBI version 0.3.0-alpha.2, adapting to RISC-V SBI v1.0.0
+
 ### 2. 深入理解 trap.S 中两个函数 **alltraps 和 **restore 的作用，并回答如下问题:
 
 #### 1. L40：刚进入 **restore 时，a0 代表了什么值。请指出 **restore 的两种使用情景。
