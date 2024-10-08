@@ -15,18 +15,12 @@
 
 ### 1. 正确进入 U 态后，程序的特征还应有：使用 S 态特权指令，访问 S 态寄存器后会报错。 请同学们可以自行测试这些内容（运行 三个 bad 测例 (ch2b*bad*\*.rs) ）， 描述程序出错行为，同时注意注明你使用的 sbi 及其版本。
 
-通过`git checkout ch2`，然后`LOG=TRACE make run`进行测试。
-
 rcore 会报无效指令错误，然后内核将程序 kill，回收内存
 
-```
-[kernel] Loading app_0
-[kernel] PageFault in application, kernel killed it.
-[kernel] Loading app_1
+```plaintext
+[kernel] PageFault in application, bad addr = 0x0, bad instruction = 0x804003a4, kernel killed it.
 [kernel] IllegalInstruction in application, kernel killed it.
-[kernel] Loading app_2
 [kernel] IllegalInstruction in application, kernel killed it.
-[kernel] Loading app_3
 ```
 
 [rustsbi] RustSBI version 0.3.0-alpha.2, adapting to RISC-V SBI v1.0.0
