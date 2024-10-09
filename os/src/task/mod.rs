@@ -153,6 +153,43 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    /// Give back Current Task's Info
+    fn get_current_task_info(&self) -> TaskInfo {
+        let inner = self.inner.exclusive_access();
+        let current_idx = inner.current_task;
+        let current_task = inner.tasks[current_idx];
+
+        match current_task.task_start_time {
+            Some(t) => {
+                return TaskInfo::new(
+                    current_task.task_status,
+                    current_task.task_call_times,
+                    Some(get_time_ms() - t),
+                );
+            }
+            None => {
+                return TaskInfo::new(
+                    current_task.task_status,
+                    current_task.task_call_times,
+                    Some(get_time_ms()),
+                );
+            }
+        }
+    }
+
+    /// An api for adding sys-call times for current task
+    fn add_syscall_times_for_cur_task(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current_idx = inner.current_task;
+        let current_task = &mut inner.tasks[current_idx];
+        if current_task.task_start_time == None {
+            current_task.task_start_time = Some(get_time_ms());
+            current_task.task_call_times[syscall_id] += 1;
+        } else {
+            current_task.task_call_times[syscall_id] += 1;
+        }
+    }
 }
 
 /// Run the first task in task list.
