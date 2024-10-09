@@ -5,7 +5,7 @@
 
 ## 我做到的功能
 
-1. 在 TaskControlBlock 中增加了两个字段，用于记录系统调用的次数和记录任务开始运行的时间。
+1. 在 TaskControlBlock 中增加了两个字段，用于记录系统调用的次数和记录任务开始运行的时间，其中时间是 `Option<usize>`，若 `None`，则说明没产生过系统调用。
 2. 为 TaskManager 增加了两个方法，分别用于为当前 task 增加系统调用的记录和返回当前 task 的 taskinfo。
 3. 为 TaskInfo 增加 new 方法，更好的实现信息隔离。
 4. 为 task 包，增加了一些接口，用于调用 TaskManager 的两个方法。
