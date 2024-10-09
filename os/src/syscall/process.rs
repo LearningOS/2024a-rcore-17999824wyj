@@ -5,8 +5,8 @@ use crate::{
     config::MAX_SYSCALL_NUM,
     mm::translated_byte_buffer,
     task::{
-        change_program_brk, cur_app_mmap, current_user_token, exit_current_and_run_next,
-        get_current_task_info, suspend_current_and_run_next, TaskStatus,
+        change_program_brk, cur_app_mmap, cur_app_unmmap, current_user_token,
+        exit_current_and_run_next, get_current_task_info, suspend_current_and_run_next, TaskStatus,
     },
     timer::{get_time_ms, get_time_us},
 };
@@ -119,9 +119,9 @@ pub fn sys_mmap(start: usize, len: usize, port: usize) -> isize {
 }
 
 // YOUR JOB: Implement munmap.
-pub fn sys_munmap(_start: usize, _len: usize) -> isize {
-    trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
-    -1
+pub fn sys_munmap(start: usize, len: usize) -> isize {
+    trace!("kernel: sys_munmap");
+    cur_app_unmmap(start, len)
 }
 
 /// change data segment size

@@ -199,6 +199,13 @@ impl TaskManager {
         let current_task = inner.current_task;
         inner.tasks[current_task].memory_set.mmap(start, len, port)
     }
+
+    /// An api for call current task to unmmap
+    fn cur_task_unmmap(&self, start: usize, len: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].memory_set.unmmap(start, len)
+    }
 }
 
 /// Run the first task in task list.
@@ -263,4 +270,10 @@ pub fn add_syscall_times_for_cur_task(syscall_id: usize) {
 /// if Ok, return 0, else -1, so need isize
 pub fn cur_app_mmap(start: usize, len: usize, port: usize) -> isize {
     TASK_MANAGER.cur_task_mmap(start, len, port)
+}
+
+/// unmap
+/// if Ok, return 0, else -1, so need isize
+pub fn cur_app_unmmap(start: usize, len: usize) -> isize {
+    TASK_MANAGER.cur_task_unmmap(start, len)
 }

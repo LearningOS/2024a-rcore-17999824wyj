@@ -302,6 +302,7 @@ impl MemorySet {
         while start_vp != end_vp {
             if let Some(pte) = self.page_table.translate(start_vp) {
                 if pte.is_valid() {
+                    // page not freed
                     return -1;
                 }
             }
@@ -310,6 +311,33 @@ impl MemorySet {
             } else {
                 return -1;
             }
+            start_vp.step();
+        }
+        0
+    }
+
+    /// unmmap in MemorySet
+    pub fn unmmap(&mut self, start: usize, len: usize) -> isize {
+        let start_va = VirtAddr::from(start);
+
+        if !start_va.aligned() {
+            // not page-aligned
+            return -1;
+        }
+
+        let mut start_vp = VirtPageNum::from(start_va);
+        let end_vp = VirtAddr::ceil(&VirtAddr::from(start + len));
+
+        while start_vp != end_vp {
+            if let Some(pte) = self.page_table.translate(start_vp) {
+                if !pte.is_valid() {
+                    // page freed
+                    return -1;
+                }
+            } else {
+                return -1;
+            }
+            self.page_table.unmap(start_vp);
             start_vp.step();
         }
         0
