@@ -192,6 +192,13 @@ impl TaskManager {
             current_task.task_call_times[syscall_id] += 1;
         }
     }
+
+    /// An api for call current task to mmap
+    fn cur_task_mmap(&self, start: usize, len: usize, port: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].memory_set.mmap(start, len, port)
+    }
 }
 
 /// Run the first task in task list.
@@ -250,4 +257,10 @@ pub fn get_current_task_info() -> TaskInfo {
 /// When current task has made a sys-call, need this to add its sys-call-times
 pub fn add_syscall_times_for_cur_task(syscall_id: usize) {
     TASK_MANAGER.add_syscall_times_for_cur_task(syscall_id);
+}
+
+/// mmap, now just apply random space
+/// if Ok, return 0, else -1, so need isize
+pub fn cur_app_mmap(start: usize, len: usize, port: usize) -> isize {
+    TASK_MANAGER.cur_task_mmap(start, len, port)
 }
