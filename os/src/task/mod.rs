@@ -16,6 +16,8 @@ mod task;
 
 use crate::loader::{get_app_data, get_num_app};
 use crate::sync::UPSafeCell;
+use crate::syscall::TaskInfo;
+use crate::timer::get_time_ms;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
 use lazy_static::*;
@@ -158,7 +160,7 @@ impl TaskManager {
     fn get_current_task_info(&self) -> TaskInfo {
         let inner = self.inner.exclusive_access();
         let current_idx = inner.current_task;
-        let current_task = inner.tasks[current_idx];
+        let current_task = &inner.tasks[current_idx];
 
         match current_task.task_start_time {
             Some(t) => {
@@ -238,4 +240,14 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+/// Get current task's Info
+pub fn get_current_task_info() -> TaskInfo {
+    TASK_MANAGER.get_current_task_info()
+}
+
+/// When current task has made a sys-call, need this to add its sys-call-times
+pub fn add_syscall_times_for_cur_task(syscall_id: usize) {
+    TASK_MANAGER.add_syscall_times_for_cur_task(syscall_id);
 }
