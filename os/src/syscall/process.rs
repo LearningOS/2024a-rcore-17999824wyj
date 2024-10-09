@@ -4,7 +4,7 @@ use crate::{
     task::{
         exit_current_and_run_next, get_current_task_info, suspend_current_and_run_next, TaskStatus,
     },
-    timer::get_time_us,
+    timer::{get_time_ms, get_time_us},
 };
 
 #[repr(C)]
@@ -27,11 +27,25 @@ pub struct TaskInfo {
 
 impl TaskInfo {
     /// The api of create a TaskInfo
-    pub fn new(status: TaskStatus, syscall_times: [u32; MAX_SYSCALL_NUM], time: usize) -> Self {
-        TaskInfo {
-            status,
-            syscall_times,
-            time,
+    pub fn new(
+        status: TaskStatus,
+        syscall_times: [u32; MAX_SYSCALL_NUM],
+        time: Option<usize>,
+    ) -> Self {
+        if let Some(t) = time {
+            return TaskInfo {
+                status,
+                syscall_times,
+                time: t,
+            };
+        } else {
+            // But, maybe this will never reach!
+            trace!("Time not Init, so this is the first syscall_time ...");
+            return TaskInfo {
+                status,
+                syscall_times,
+                time: get_time_ms(),
+            };
         }
     }
 }

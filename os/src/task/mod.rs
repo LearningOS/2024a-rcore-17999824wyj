@@ -57,7 +57,7 @@ lazy_static! {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
             task_call_times: [0; MAX_SYSCALL_NUM],
-            task_start_time: get_time_ms(),
+            task_start_time: None,
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -145,11 +145,23 @@ impl TaskManager {
         let inner = self.inner.exclusive_access();
         let current_idx = inner.current_task;
         let current_task = inner.tasks[current_idx];
-        TaskInfo::new(
-            current_task.task_status,
-            current_task.task_call_times,
-            get_time_ms() - current_task.task_start_time,
-        )
+
+        match current_task.task_start_time {
+            Some(t) => {
+                return TaskInfo::new(
+                    current_task.task_status,
+                    current_task.task_call_times,
+                    Some(get_time_ms() - t),
+                );
+            }
+            None => {
+                return TaskInfo::new(
+                    current_task.task_status,
+                    current_task.task_call_times,
+                    Some(get_time_ms()),
+                );
+            }
+        }
     }
 
     /// An api for adding sys-call times for current task
@@ -157,7 +169,12 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let current_idx = inner.current_task;
         let current_task = &mut inner.tasks[current_idx];
-        current_task.task_call_times[syscall_id] += 1;
+        if current_task.task_start_time == None {
+            current_task.task_start_time = Some(get_time_ms());
+            current_task.task_call_times[syscall_id] += 1;
+        } else {
+            current_task.task_call_times[syscall_id] += 1;
+        }
     }
 }
 
