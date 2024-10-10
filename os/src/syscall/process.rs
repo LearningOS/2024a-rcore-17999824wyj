@@ -1,14 +1,17 @@
 //! Process management syscalls
 use alloc::sync::Arc;
+use core::mem::size_of;
 
 use crate::{
     config::MAX_SYSCALL_NUM,
     loader::get_app_data_by_name,
-    mm::{translated_refmut, translated_str},
+    mm::translated_byte_buffer,
     task::{
-        add_task, current_task, current_user_token, exit_current_and_run_next,
+        add_task, change_program_brk, cur_app_mmap, cur_app_unmmap, current_task,
+        current_user_token, exit_current_and_run_next, get_current_task_info,
         suspend_current_and_run_next, TaskStatus,
     },
+    timer::{get_time_ms, get_time_us},
 };
 
 #[repr(C)]
@@ -27,6 +30,31 @@ pub struct TaskInfo {
     syscall_times: [u32; MAX_SYSCALL_NUM],
     /// Total running time of task
     time: usize,
+}
+
+impl TaskInfo {
+    /// The api of create a TaskInfo
+    pub fn new(
+        status: TaskStatus,
+        syscall_times: [u32; MAX_SYSCALL_NUM],
+        time: Option<usize>,
+    ) -> Self {
+        if let Some(t) = time {
+            return TaskInfo {
+                status,
+                syscall_times,
+                time: t,
+            };
+        } else {
+            // But, maybe this will never reach!
+            trace!("Time not Init, so this is the first syscall_time ...");
+            return TaskInfo {
+                status,
+                syscall_times,
+                time: get_time_ms(),
+            };
+        }
+    }
 }
 
 /// task exits and submit an exit code
@@ -79,7 +107,11 @@ pub fn sys_exec(path: *const u8) -> isize {
 /// If there is not a child process whose pid is same as given, return -1.
 /// Else if there is a child process but it is still running, return -2.
 pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
-    trace!("kernel::pid[{}] sys_waitpid [{}]", current_task().unwrap().pid.0, pid);
+    trace!(
+        "kernel::pid[{}] sys_waitpid [{}]",
+        current_task().unwrap().pid.0,
+        pid
+    );
     let task = current_task().unwrap();
     // find a child process
 
@@ -117,41 +149,69 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 /// YOUR JOB: get time with second and microsecond
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
-pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
+pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     trace!(
         "kernel:pid[{}] sys_get_time NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    let buffers =
+        translated_byte_buffer(current_user_token(), ts as *const u8, size_of::<TimeVal>());
+    let us = get_time_us();
+    let time_val = TimeVal {
+        sec: us / 1_000_000,
+        usec: us % 1_000_000,
+    };
+
+    // get ptr again, to solve `cross-page`
+    let mut time_val_ptr = &time_val as *const _ as *const u8;
+    for buffer in buffers {
+        unsafe {
+            time_val_ptr.copy_to(buffer.as_mut_ptr(), buffer.len());
+            time_val_ptr = time_val_ptr.add(buffer.len());
+        }
+    }
+    0
 }
 
 /// YOUR JOB: Finish sys_task_info to pass testcases
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
-pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
+pub fn sys_task_info(ti: *mut TaskInfo) -> isize {
     trace!(
         "kernel:pid[{}] sys_task_info NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    let buffers =
+        translated_byte_buffer(current_user_token(), ti as *const u8, size_of::<TaskInfo>());
+    let ts = get_current_task_info();
+
+    // get ptr again, to solve `cross-page`
+    let mut task_info_ptr = &ts as *const _ as *const u8;
+    for buffer in buffers {
+        unsafe {
+            task_info_ptr.copy_to(buffer.as_mut_ptr(), buffer.len());
+            task_info_ptr = task_info_ptr.add(buffer.len());
+        }
+    }
+    0
 }
 
-/// YOUR JOB: Implement mmap.
-pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
+// YOUR JOB: Implement mmap.
+pub fn sys_mmap(start: usize, len: usize, port: usize) -> isize {
     trace!(
         "kernel:pid[{}] sys_mmap NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    cur_app_mmap(start, len, port)
 }
 
-/// YOUR JOB: Implement munmap.
-pub fn sys_munmap(_start: usize, _len: usize) -> isize {
+// YOUR JOB: Implement munmap.
+pub fn sys_munmap(start: usize, len: usize) -> isize {
     trace!(
         "kernel:pid[{}] sys_munmap NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    cur_app_unmmap(start, len)
 }
 
 /// change data segment size
