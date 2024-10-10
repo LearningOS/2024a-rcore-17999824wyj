@@ -1,5 +1,5 @@
 //!Implementation of [`TaskManager`]
-use super::{TaskControlBlock, BIG_STRIDE};
+use super::{TaskControlBlock, TaskStatus};
 use crate::sync::UPSafeCell;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
@@ -23,30 +23,22 @@ impl TaskManager {
     }
     /// Take a process out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
-        let mut min_stride_task: Option<Arc<TaskControlBlock>> = None;
+        let min_index = self
+            .ready_queue
+            .iter()
+            .enumerate()
+            .filter(|(_, task)| task.inner_exclusive_access().task_status == TaskStatus::Ready)
+            .min_by_key(|(_, task)| task.inner_exclusive_access().stride)
+            .unwrap();
 
-        let mut idx = 0;
-        for task in self.ready_queue.iter() {
-            if let Some(cur_min_task) = &min_stride_task {
-                if task.inner_exclusive_access().priority
-                    < cur_min_task.inner_exclusive_access().priority
-                {
-                    min_stride_task = Some(task.clone());
-                }
-            } else {
-                min_stride_task = Some(task.clone());
+        match self.ready_queue.remove(min_index.0) {
+            Some(tcb) => {
+                tcb.pass();
+                return Some(tcb);
             }
-            idx += 1;
-        }
-
-        let task = min_stride_task.unwrap();
-        let mut inner = task.inner_exclusive_access();
-        inner.priority += BIG_STRIDE / inner.priority;
-        if self.ready_queue.is_empty() {
-            return None;
-        } else {
-            self.ready_queue.remove(idx);
-            Some(task.clone())
+            None => {
+                return None;
+            }
         }
     }
 }

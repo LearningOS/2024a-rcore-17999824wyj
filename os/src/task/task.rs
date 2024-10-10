@@ -1,6 +1,6 @@
 //! Types related to task management & Functions for completely changing TCB
-use super::TaskContext;
 use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
+use super::{TaskContext, BIG_STRIDE};
 use crate::config::{MAX_SYSCALL_NUM, TRAP_CONTEXT_BASE};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
@@ -77,6 +77,9 @@ pub struct TaskControlBlockInner {
     /// The start time of task
     pub task_start_time: Option<usize>,
 
+    /// Use for stride
+    pub stride: usize,
+
     /// The priority of this task
     pub priority: usize,
 }
@@ -132,6 +135,7 @@ impl TaskControlBlock {
                     program_brk: user_sp,
                     sys_call_times: [0; MAX_SYSCALL_NUM],
                     task_start_time: None,
+                    stride: 0,
                     priority: 16,
                 })
             },
@@ -208,6 +212,7 @@ impl TaskControlBlock {
                     program_brk: parent_inner.program_brk,
                     sys_call_times: [0; MAX_SYSCALL_NUM],
                     task_start_time: None,
+                    stride: 0,
                     priority: 16,
                 })
             },
@@ -297,6 +302,13 @@ impl TaskControlBlock {
         }
         self.inner_exclusive_access().priority = priority as usize;
         priority
+    }
+
+    /// stride
+    pub fn pass(&self) {
+        let mut inner = self.inner_exclusive_access();
+        let pass = BIG_STRIDE / inner.priority;
+        inner.stride += pass;
     }
 }
 
