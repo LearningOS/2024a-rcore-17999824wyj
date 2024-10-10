@@ -5,10 +5,9 @@ use core::mem::size_of;
 use crate::{
     config::MAX_SYSCALL_NUM,
     loader::get_app_data_by_name,
-    mm::translated_byte_buffer,
+    mm::{translated_byte_buffer, translated_refmut, translated_str},
     task::{
-        add_task, change_program_brk, cur_app_mmap, cur_app_unmmap, current_task,
-        current_user_token, exit_current_and_run_next, get_current_task_info,
+        add_task, current_task, current_user_token, exit_current_and_run_next,
         suspend_current_and_run_next, TaskStatus,
     },
     timer::{get_time_ms, get_time_us},
@@ -150,10 +149,7 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
 pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_get_time NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+    trace!("kernel:pid[{}] sys_get_time", current_task().unwrap().pid.0);
     let buffers =
         translated_byte_buffer(current_user_token(), ts as *const u8, size_of::<TimeVal>());
     let us = get_time_us();
@@ -178,12 +174,12 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
 pub fn sys_task_info(ti: *mut TaskInfo) -> isize {
     trace!(
-        "kernel:pid[{}] sys_task_info NOT IMPLEMENTED",
+        "kernel:pid[{}] sys_task_info",
         current_task().unwrap().pid.0
     );
     let buffers =
         translated_byte_buffer(current_user_token(), ti as *const u8, size_of::<TaskInfo>());
-    let ts = get_current_task_info();
+    let ts = current_task().unwrap().get_task_info();
 
     // get ptr again, to solve `cross-page`
     let mut task_info_ptr = &ts as *const _ as *const u8;
@@ -198,20 +194,14 @@ pub fn sys_task_info(ti: *mut TaskInfo) -> isize {
 
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(start: usize, len: usize, port: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_mmap NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
-    cur_app_mmap(start, len, port)
+    trace!("kernel:pid[{}] sys_mmap", current_task().unwrap().pid.0);
+    current_task().unwrap().mmap(start, len, port)
 }
 
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(start: usize, len: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_munmap NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
-    cur_app_unmmap(start, len)
+    trace!("kernel:pid[{}] sys_munmap", current_task().unwrap().pid.0);
+    current_task().unwrap().unmmap(start, len)
 }
 
 /// change data segment size

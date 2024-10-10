@@ -21,13 +21,8 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::loader::{get_app_data, get_num_app};
-use crate::sync::UPSafeCell;
-use crate::syscall::TaskInfo;
-use crate::timer::get_time_ms;
-use crate::trap::TrapContext;
+use crate::loader::get_app_data_by_name;
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 use lazy_static::*;
 pub use manager::{fetch_task, TaskManager};
 use switch::__switch;
@@ -119,26 +114,4 @@ lazy_static! {
 ///Add init process to the manager
 pub fn add_initproc() {
     add_task(INITPROC.clone());
-}
-
-/// Get current task's Info
-pub fn get_current_task_info() -> TaskInfo {
-    TASK_MANAGER.get_current_task_info()
-}
-
-/// When current task has made a sys-call, need this to add its sys-call-times
-pub fn add_syscall_times_for_cur_task(syscall_id: usize) {
-    TASK_MANAGER.add_syscall_times_for_cur_task(syscall_id);
-}
-
-/// mmap, now just apply random space
-/// if Ok, return 0, else -1, so need isize
-pub fn cur_app_mmap(start: usize, len: usize, port: usize) -> isize {
-    TASK_MANAGER.cur_task_mmap(start, len, port)
-}
-
-/// unmap
-/// if Ok, return 0, else -1, so need isize
-pub fn cur_app_unmmap(start: usize, len: usize) -> isize {
-    TASK_MANAGER.cur_task_unmmap(start, len)
 }
