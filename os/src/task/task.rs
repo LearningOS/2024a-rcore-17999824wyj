@@ -71,11 +71,14 @@ pub struct TaskControlBlockInner {
     /// Program break
     pub program_brk: usize,
 
-    /// how many times have this task called sys_calls
+    /// How many times have this task called sys_calls
     pub sys_call_times: [u32; MAX_SYSCALL_NUM],
 
     /// The start time of task
     pub task_start_time: Option<usize>,
+
+    /// The priority of this task
+    pub priority: usize,
 }
 
 impl TaskControlBlockInner {
@@ -129,6 +132,7 @@ impl TaskControlBlock {
                     program_brk: user_sp,
                     sys_call_times: [0; MAX_SYSCALL_NUM],
                     task_start_time: None,
+                    priority: 16,
                 })
             },
         };
@@ -204,6 +208,7 @@ impl TaskControlBlock {
                     program_brk: parent_inner.program_brk,
                     sys_call_times: [0; MAX_SYSCALL_NUM],
                     task_start_time: None,
+                    priority: 16,
                 })
             },
         });
@@ -283,6 +288,15 @@ impl TaskControlBlock {
     pub fn unmmap(&self, start: usize, len: usize) -> isize {
         let mut inner = self.inner_exclusive_access();
         inner.memory_set.unmmap(start, len)
+    }
+
+    /// set priority for self
+    pub fn set_priority(&self, priority: isize) -> isize {
+        if priority < 2 {
+            return -1;
+        }
+        self.inner_exclusive_access().priority = priority as usize;
+        priority
     }
 }
 
