@@ -15,6 +15,35 @@ pub struct Inode {
 }
 
 impl Inode {
+    /// api to get index-node's id
+    pub fn node_id(&self) -> usize {
+        self.fs
+            .lock()
+            .get_inode_by_pos(self.block_id, self.block_offset)
+    }
+    /// api to get ref's cnt
+    pub fn ref_cnt(&self) -> usize {
+        get_block_cache(self.block_id, Arc::clone(&self.block_device))
+            .lock()
+            .read(self.block_offset, |node: &DiskInode| node.ref_cnt)
+    }
+    /// api to get file's mode, return res is defined by StateMode
+    pub fn mode(&self) -> usize {
+        get_block_cache(self.block_id, Arc::clone(&self.block_device))
+            .lock()
+            .read(self.block_offset, |node: &DiskInode| {
+                if node.is_file() {
+                    return 0o100000;
+                } else if node.is_dir() {
+                    return 0o040000;
+                } else {
+                    return 0;
+                }
+            })
+    }
+}
+
+impl Inode {
     /// Create a vfs inode
     pub fn new(
         block_id: u32,

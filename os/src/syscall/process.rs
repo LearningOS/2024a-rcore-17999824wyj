@@ -6,7 +6,6 @@ use core::mem::size_of;
 use crate::{
     config::MAX_SYSCALL_NUM,
     fs::{open_file, OpenFlags},
-    loader::get_app_data_by_name,
     mm::{translated_byte_buffer, translated_refmut, translated_str},
     task::{
         add_task, current_task, current_user_token, exit_current_and_run_next,
@@ -226,8 +225,10 @@ pub fn sys_spawn(path: *const u8) -> isize {
     let token = inner.get_user_token();
     let path = translated_str(token, path);
 
-    if let Some(data) = get_app_data_by_name(path.as_str()) {
-        let child_tcb = Arc::new(crate::task::TaskControlBlock::new(data));
+    if let Some(data) = open_file(path.as_str(), OpenFlags::RDONLY) {
+        let all_data = data.read_all();
+        let elf_data = all_data.as_slice();
+        let child_tcb = Arc::new(crate::task::TaskControlBlock::new(elf_data));
         let mut child_inner = child_tcb.inner_exclusive_access();
         child_inner.parent = Some(Arc::downgrade(&t));
         inner.children.push(child_tcb.clone());
