@@ -79,6 +79,7 @@ pub fn sys_close(fd: usize) -> isize {
 pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
     trace!("kernel:pid[{}] sys_fstat", current_task().unwrap().pid.0);
     let task = current_task().unwrap();
+    let stat = translated_refmut(current_user_token(), st);
     let inner = task.inner_exclusive_access();
     if fd >= inner.fd_table.len() {
         return -1;
@@ -86,10 +87,7 @@ pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
     if inner.fd_table[fd].is_none() {
         return -1;
     }
-    inner.fd_table[fd]
-        .clone()
-        .unwrap()
-        .fstat(translated_refmut(current_user_token(), st))
+    inner.fd_table[fd].clone().unwrap().fstat(stat)
 }
 
 /// YOUR JOB: Implement linkat.
