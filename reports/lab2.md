@@ -1,4 +1,4 @@
-# Lab 1. Report
+# Lab 2. Report
 
 @Author: Wang Yijia (abcd1234)  
 @Email: abcd1234dbren@yeah.net
