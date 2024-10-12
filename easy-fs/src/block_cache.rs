@@ -8,6 +8,8 @@ use spin::Mutex;
 pub struct BlockCache {
     /// cached block data
     cache: Vec<u8>,
+    // 注：此时是秋冬季训练营，但是我在春夏训练营时，此处曾接受别人帮助，现在的解决方案还是那一套
+    // 万分感谢训练营交流群 攻子 同学！
     /// underlying block id
     block_id: usize,
     /// underlying block device
@@ -23,6 +25,8 @@ impl BlockCache {
         unsafe {
             cache.set_len(512);
         }
+        // 注：此时是秋冬季训练营，但是我在春夏训练营时，此处曾接受别人帮助，现在的解决方案还是那一套
+        // 万分感谢训练营交流群 攻子 同学！
         block_device.read_block(block_id, &mut cache);
         Self {
             cache,
