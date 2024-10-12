@@ -212,4 +212,12 @@ impl Inode {
         });
         block_cache_sync_all();
     }
+    /// Link At operation, link to the old name for the new name
+    pub fn link_at(&self, _old_name: &str, _new_name: &str) -> isize {
+        -1
+    }
+    /// unlink_at, use this func to rm the link which has been established
+    pub fn unlink_at(&self, _name: &str) -> isize {
+        -1
+    }
 }
