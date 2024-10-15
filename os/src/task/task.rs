@@ -49,6 +49,7 @@ pub struct TaskControlBlockInner {
     /// because there would be sometimes lots of processes will want the same semaphore, so it may be lower than 0
     pub allocation: Vec<(usize, isize)>,
     /// the vector of need, records this 'task' need how many semaphore
+    /// the same as allocation, (first, second) is (id, how many)
     pub need: Vec<(usize, isize)>,
 }
 

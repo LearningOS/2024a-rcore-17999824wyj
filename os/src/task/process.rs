@@ -89,6 +89,7 @@ impl DeadLockManager {
             process_inner.tasks.len(),
             process_inner.semaphore_list.len(),
         );
+
         // vector `finish`
         let mut finished = vec![false; thread_count];
         // vector `work`
@@ -141,8 +142,9 @@ impl DeadLockManager {
                 let mut flag = true;
                 for j in 0..sem_count {
                     if need[i][j] > work[j] {
+                        // Not enough resources to allocate to task i
                         flag = false;
-                        break;
+                        break; // No need to check further resources for this task
                     }
                 }
 
@@ -157,6 +159,7 @@ impl DeadLockManager {
                 }
             }
         }
+
         if finished.iter().any(|value| *value == false) {
             return -0xDEAD;
         } else {

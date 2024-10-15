@@ -145,21 +145,7 @@ pub fn sys_semaphore_up(sem_id: usize) -> isize {
     let process_inner = process.inner_exclusive_access();
     let sem = Arc::clone(process_inner.semaphore_list[sem_id].as_ref().unwrap());
     drop(process_inner);
-    let task = current_task();
-    let mut task_inner = task.as_ref().unwrap().inner_exclusive_access();
-    if let Some(index) = task_inner
-        .allocation
-        .iter()
-        .enumerate()
-        .find(|(_, (id, _))| *id == sem_id)
-        .map(|(index, (_, _))| index)
-    {
-        task_inner.allocation[index].1 -= 1;
-        if task_inner.allocation[index].1 == 0 {
-            task_inner.allocation.remove(index);
-        }
-    }
-    sem.up(sem_id);
+    sem.up();
     0
 }
 /// semaphore down syscall
