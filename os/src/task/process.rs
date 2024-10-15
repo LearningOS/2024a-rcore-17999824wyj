@@ -49,6 +49,114 @@ pub struct ProcessControlBlockInner {
     pub semaphore_list: Vec<Option<Arc<Semaphore>>>,
     /// condvar list
     pub condvar_list: Vec<Option<Arc<Condvar>>>,
+    /// need detect?
+    pub lock_manager: DeadLockManager,
+}
+
+pub struct DeadLockManager {
+    /// use dead-lock detect?
+    pub using: bool,
+}
+
+impl DeadLockManager {
+    fn new() -> Self {
+        DeadLockManager { using: false }
+    }
+
+    /// enable deadlock-detect
+    pub fn enable(&mut self) {
+        self.using = true;
+    }
+
+    /// disable deadlock-detect
+    pub fn disable(&mut self) {
+        self.using = false;
+    }
+
+    /// detect whether current will make deadlock for Semaphore
+    /// @Return:
+    ///  0 -> no deadlock
+    /// -1 -> Error!
+    /// -0xDEAD -> deadlock
+    fn semaphore_detect(
+        &self,
+        process_inner: &ProcessControlBlockInner,
+        cur_tid: usize,
+        sem_id: usize,
+    ) -> isize {
+        let (thread_count, sem_count) = (
+            process_inner.tasks.len(),
+            process_inner.semaphore_list.len(),
+        );
+        // vector `finish`
+        let mut finished = vec![false; thread_count];
+        // vector `work`
+        let mut work = vec![0; sem_count];
+        // matrix `allocation`
+        let mut allocation = vec![vec![0; sem_count]; thread_count];
+        // matrix `need`
+        let mut need = vec![vec![0; sem_count]; thread_count];
+
+        for (index, task) in process_inner.tasks.iter().enumerate() {
+            if let Some(task_ref) = task {
+                let task_inner = task_ref.inner_exclusive_access();
+                let may_tid = task_inner.res.as_ref();
+                match may_tid {
+                    None => {
+                        return -1;
+                    }
+                    Some(tid) => {
+                        for (id, cnt) in task_inner.allocation.iter() {
+                            allocation[index][*id] = *cnt;
+                        }
+                        for (id, cnt) in task_inner.need.iter() {
+                            need[index][*id] = *cnt;
+                        }
+                        if tid.tid == cur_tid {
+                            // if tid stands for current task, it need to add one, for the 'banker' to judge whether still safe
+                            need[index][sem_id] += 1;
+                        }
+                    }
+                }
+            } else {
+                return -1;
+            }
+        }
+        for (index, sem) in process_inner.semaphore_list.iter().enumerate() {
+            work[index] = sem.as_ref().unwrap().inner.exclusive_access().count.max(0);
+        }
+
+        for k in 0..thread_count {
+            for i in 0..thread_count {
+                if finished[i] == true {
+                    // finished tasks
+                    continue;
+                }
+                let mut flag = true;
+                for j in 0..sem_count {
+                    if need[i][j] > work[j] {
+                        // can't be execute
+                        flag = false;
+                    }
+                }
+                if flag {
+                    finished[i] = flag;
+                    for j in 0..sem_count {
+                        // get resource back
+                        work[j] += allocation[i][j];
+                    }
+                    break; // find next
+                }
+            }
+            debug!("round{}, finished:{:?}, work:{:?}", k, finished, work);
+        }
+        debug!("banker-final >> finished:{:?}, work:{:?}", finished, work);
+        if finished.iter().any(|value| *value == false) {
+            return -0xDEAD;
+        } else {
+            return 0;
+        }
+    }
 }
 
 impl ProcessControlBlockInner {
@@ -81,6 +189,9 @@ impl ProcessControlBlockInner {
     /// get a task with tid in this process
     pub fn get_task(&self, tid: usize) -> Arc<TaskControlBlock> {
         self.tasks[tid].as_ref().unwrap().clone()
+    }
+    pub fn semaphore_detect(&self, cur_tid: usize, sem_id: usize) -> isize {
+        self.lock_manager.semaphore_detect(self, cur_tid, sem_id)
     }
 }
 
@@ -119,6 +230,7 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
+                    lock_manager: DeadLockManager::new(),
                 })
             },
         });
@@ -245,6 +357,9 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
+                    lock_manager: DeadLockManager {
+                        using: parent.lock_manager.using,
+                    },
                 })
             },
         });
