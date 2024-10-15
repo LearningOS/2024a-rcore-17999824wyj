@@ -84,6 +84,7 @@ impl DeadLockManager {
         cur_tid: usize,
         sem_id: usize,
     ) -> isize {
+        // process should be thread's father
         let (thread_count, sem_count) = (
             process_inner.tasks.len(),
             process_inner.semaphore_list.len(),
@@ -103,6 +104,7 @@ impl DeadLockManager {
                 let may_tid = task_inner.res.as_ref();
                 match may_tid {
                     None => {
+                        // also may be never used
                         return -1;
                     }
                     Some(tid) => {
@@ -114,43 +116,47 @@ impl DeadLockManager {
                         }
                         if tid.tid == cur_tid {
                             // if tid stands for current task, it need to add one, for the 'banker' to judge whether still safe
+                            // this is because it is requesting, but its need havn't been added into its need vec
                             need[index][sem_id] += 1;
                         }
                     }
                 }
             } else {
-                return -1;
+                // maybe never use
+                error!("emaphore-detect >> TaskQueue in process will never be empty!");
+                panic!();
             }
         }
         for (index, sem) in process_inner.semaphore_list.iter().enumerate() {
             work[index] = sem.as_ref().unwrap().inner.exclusive_access().count.max(0);
         }
 
-        for k in 0..thread_count {
+        for _ in 0..thread_count {
             for i in 0..thread_count {
-                if finished[i] == true {
-                    // finished tasks
+                if finished[i] {
+                    // This task is already finished
                     continue;
                 }
+
                 let mut flag = true;
                 for j in 0..sem_count {
                     if need[i][j] > work[j] {
-                        // can't be execute
                         flag = false;
+                        break;
                     }
                 }
+
                 if flag {
-                    finished[i] = flag;
+                    // Task can be allocated resources and finished
+                    finished[i] = true;
                     for j in 0..sem_count {
-                        // get resource back
+                        // Release resources after task completion
                         work[j] += allocation[i][j];
                     }
-                    break; // find next
+                    break; // Go to the next round after a task is finished
                 }
             }
-            debug!("round{}, finished:{:?}, work:{:?}", k, finished, work);
         }
-        debug!("banker-final >> finished:{:?}, work:{:?}", finished, work);
         if finished.iter().any(|value| *value == false) {
             return -0xDEAD;
         } else {
