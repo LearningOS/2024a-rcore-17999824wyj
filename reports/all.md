@@ -5,7 +5,7 @@ categories:
   - rust-stage-1
 tags:
   - author:17999824wyj
-  - repo:https://github.com/LearningOS/rust-rustlings-2024-spring-17999824wyj.git
+  - repo:https://github.com/LearningOS/2024a-rcore-17999824wyj
   - noob
   - nickname:abcd1234
   - email:abcd1234dbren@yeah.net
@@ -13,7 +13,7 @@ tags:
 
 # Rust OS 一阶段学习总结
 
-@FinishTime: 2024-04-23 00:35:51
+@FinishTime: 2024-09-19 00:35:51
 
 ## 个人背景概述
 
